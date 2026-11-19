@@ -2,6 +2,7 @@ import { Suspense, useEffect, useState, type ComponentType } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
     Banknote,
+    Building2,
     Calendar,
     Clock,
     ExternalLink,
@@ -13,6 +14,7 @@ import {
     Menu,
     Network,
     Settings,
+    ShieldCheck,
     UserCog,
     Users,
     Wallet,
@@ -40,6 +42,12 @@ const BOTTOM_SHORT_LABELS: Partial<Record<MenuKey, string>> = {
     warga: 'Warga',
     organisasi: 'Struktur',
 };
+
+function formatKodeWilayah(value?: string | null): string {
+    const clean = (value ?? '').trim();
+    if (!clean) return '';
+    return /^\d+$/.test(clean) ? clean.padStart(2, '0') : clean;
+}
 
 export default function AdminLayout() {
     const { currentUser, can, logout } = useAkses();
@@ -77,6 +85,42 @@ export default function AdminLayout() {
     }, [isDrawerOpen]);
 
     if (!currentUser) return null;
+
+    // Ambil wilayah RT / RW / Desa dari data admin yang login (fallback aman jika field belum dikirim API)
+     const userWilayah = currentUser as typeof currentUser & {
+        rt?: string | null;
+        rw?: string | null;
+        desa?: string | null;
+        kelurahan?: string | null;
+    };
+
+    const nomorRT = formatKodeWilayah(userWilayah.rt);
+    const nomorRW = formatKodeWilayah(userWilayah.rw);
+    const namaDesa = (userWilayah.desa || userWilayah.kelurahan || 'Desa Sukadami').trim();
+
+    const kodeSingkat = nomorRT ? `RT ${nomorRT}` : nomorRW ? `RW ${nomorRW}` : 'DESA';
+
+    const labelWilayah =
+        nomorRT && nomorRW
+            ? `RT ${nomorRT} / RW ${nomorRW}`
+            : nomorRT
+                ? `RT ${nomorRT}`
+                : nomorRW
+                    ? `RW ${nomorRW}`
+                    : namaDesa;
+
+    const judulSistem =
+        nomorRT && nomorRW
+            ? `SIRUTAWA ${nomorRT} / RW ${nomorRW}`
+            : nomorRT
+                ? `SIRUTAWA ${nomorRT}`
+                : nomorRW
+                    ? `SIRUWA ${nomorRW}`
+                    : 'SIDESA';
+
+    const lokasiLengkap =
+        nomorRT || nomorRW ? `${labelWilayah}, ${namaDesa}` : namaDesa;
+
 
     const allowedMenus = MENU_LIST.filter((m) => can(m.key, 'lihat')).map((m) => ({
         ...m,
@@ -137,13 +181,16 @@ export default function AdminLayout() {
         <div className="min-h-[100dvh] bg-bg-gray flex flex-col lg:flex-row overflow-x-clip">
             {/* Sidebar Desktop */}
             <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-white border-r border-gray-200 z-30">
-                <div className="h-16 px-6 flex items-center gap-3 border-b border-gray-100 shrink-0">
-                    <div className="w-9 h-9 rounded-xl bg-primary text-white flex items-center justify-center font-extrabold text-sm shadow-sm">
-                        RT
+                <div className="h-16 px-5 flex items-center gap-3 border-b border-gray-100 shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-emerald-700 text-white flex flex-col items-center justify-center shadow-sm shrink-0">
+                        <Building2 size={16} />
+                        <span className="text-[9px] font-extrabold tracking-tight leading-none mt-0.5">
+                            {kodeSingkat}
+                        </span>
                     </div>
                     <div className="min-w-0">
-                        <p className="font-bold text-text-main text-sm leading-tight truncate">SIRT 01 / 08</p>
-                        <p className="text-[11px] text-text-muted truncate">Panel Pengurus</p>
+                        <p className="font-bold text-text-main text-sm leading-tight truncate">{judulSistem}</p>
+                        <p className="text-[11px] text-text-muted truncate">{namaDesa}</p>
                     </div>
                 </div>
 
@@ -155,8 +202,8 @@ export default function AdminLayout() {
                                 key={key}
                                 to={path}
                                 className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${active
-                                        ? 'bg-primary text-white shadow-sm'
-                                        : 'text-text-muted hover:bg-gray-100 hover:text-text-main'
+                                    ? 'bg-primary text-white shadow-sm'
+                                    : 'text-text-muted hover:bg-gray-100 hover:text-text-main'
                                     }`}
                             >
                                 <Icon size={18} className="shrink-0" />
@@ -181,7 +228,9 @@ export default function AdminLayout() {
                         </div>
                         <div className="min-w-0 flex-1">
                             <p className="text-xs font-bold text-text-main truncate">{currentUser.nama}</p>
-                            <p className="text-[11px] text-text-muted truncate">{currentUser.role}</p>
+                            <p className="text-[11px] text-text-muted truncate">
+                                {currentUser.role} • {labelWilayah}
+                            </p>
                         </div>
                         <button
                             type="button"
@@ -215,7 +264,7 @@ export default function AdminLayout() {
                         <div className="min-w-0">
                             <h1 className="text-base sm:text-lg font-bold text-text-main truncate">{pageTitle}</h1>
                             <p className="text-[11px] text-text-muted lg:hidden truncate">
-                                {currentUser.role} • {currentUser.nama}
+                                {labelWilayah} • {currentUser.nama}
                             </p>
                         </div>
                     </div>
@@ -224,7 +273,7 @@ export default function AdminLayout() {
                     <div className="hidden lg:flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl bg-gray-50 border border-gray-200/70 text-xs text-text-muted shrink-0">
                         <span className="inline-flex items-center gap-1.5 font-medium text-text-main">
                             <MapPin size={14} className="text-primary shrink-0" />
-                            <span>RT 01/08, Desa Sukadami</span>
+                            <span>{lokasiLengkap}</span>
                         </span>
                         <span className="text-gray-300" aria-hidden="true">|</span>
                         <span className="inline-flex items-center gap-1.5">
@@ -306,34 +355,55 @@ export default function AdminLayout() {
                     className={`relative w-72 max-w-[82vw] bg-white h-full flex flex-col shadow-2xl transform transition-transform duration-300 ease-out will-change-transform ${isDrawerOpen ? 'translate-x-0' : '-translate-x-full'
                         }`}
                 >
-                    <div className="h-16 px-5 flex items-center justify-between border-b border-gray-100 shrink-0">
-                        <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-xl bg-primary text-white flex items-center justify-center font-extrabold text-xs">
-                                RT
+                    {/* Header Brand Mobile yang Lebih Modern & Dinamis */}
+                    <div className="px-4 py-4 bg-gradient-to-br from-primary to-emerald-800 text-white flex items-center justify-between gap-2.5 shrink-0">
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-11 h-11 rounded-2xl bg-white/15 border border-white/25 backdrop-blur-sm flex flex-col items-center justify-center shadow-inner shrink-0">
+                                <Building2 size={18} className="text-white" />
+                                <span className="text-[9px] font-extrabold tracking-wide leading-none mt-0.5">
+                                    {kodeSingkat}
+                                </span>
                             </div>
-                            <div>
-                                <p className="font-bold text-text-main text-sm leading-tight">SIRT 01 / 08</p>
-                                <p className="text-[11px] text-text-muted">Menu Lainnya</p>
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                    <p className="font-extrabold text-sm leading-tight truncate">{judulSistem}</p>
+                                </div>
+                                <p className="text-[11px] text-white/80 truncate mt-0.5">{namaDesa}</p>
                             </div>
                         </div>
                         <button
                             type="button"
                             onClick={() => setIsDrawerOpen(false)}
                             aria-label="Tutup menu"
-                            className="p-2 rounded-xl text-gray-400 hover:bg-gray-100 hover:text-text-main active:scale-95 transition"
+                            className="p-2 rounded-xl text-white/80 hover:bg-white/15 hover:text-white active:scale-95 transition shrink-0"
                         >
                             <X size={20} />
                         </button>
                     </div>
 
-                    {/* Kartu Profil Pengurus */}
-                    <div className="px-4 py-3.5 bg-gray-50/80 border-b border-gray-100 flex items-center gap-3 shrink-0">
-                        <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm shrink-0">
-                            {inisialUser}
+                    {/* Kartu Profil Pengurus + Badge Wilayah */}
+                    <div className="px-4 py-3.5 bg-gray-50/90 border-b border-gray-100 flex items-center gap-3 shrink-0">
+                        <div className="relative shrink-0">
+                            <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm shadow-sm">
+                                {inisialUser}
+                            </div>
+                            <span
+                                title="Aktif"
+                                className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 ring-2 ring-white flex items-center justify-center"
+                            >
+                                <ShieldCheck size={9} className="text-white" />
+                            </span>
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                             <p className="text-sm font-bold text-text-main truncate">{currentUser.nama}</p>
-                            <p className="text-xs text-primary font-medium truncate">{currentUser.role}</p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="text-xs text-primary font-semibold truncate">
+                                    {currentUser.role}
+                                </span>
+                                <span className="px-1.5 py-0.5 rounded bg-primary-light text-primary text-[10px] font-bold shrink-0">
+                                    {labelWilayah}
+                                </span>
+                            </div>
                         </div>
                     </div>
 
@@ -352,8 +422,8 @@ export default function AdminLayout() {
                                             to={path}
                                             tabIndex={isDrawerOpen ? 0 : -1}
                                             className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-colors ${active
-                                                    ? 'bg-primary text-white shadow-sm'
-                                                    : 'text-text-main hover:bg-gray-100'
+                                                ? 'bg-primary text-white shadow-sm'
+                                                : 'text-text-main hover:bg-gray-100'
                                                 }`}
                                         >
                                             <Icon size={18} className="shrink-0" />

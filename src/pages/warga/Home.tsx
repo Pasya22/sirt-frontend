@@ -1,37 +1,136 @@
-import { useEffect, useState } from 'react';
-import { ArrowRight, TrendingDown, TrendingUp } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { ArrowRight, LocateFixed, MapPin, Navigation, TrendingDown, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { formatRp } from '../../lib/format';
 
+interface WilayahInfo {
+  rt?: string | null;
+  rw?: string | null;
+  desa?: string | null;
+  kecamatan?: string | null;
+  kabupaten?: string | null;
+  provinsi?: string | null;
+}
+
+interface LokasiTerdeteksi extends WilayahInfo {
+  dalamWilayahTerdaftar: boolean;
+  jarakMeter: number | null;
+  pesan: string;
+}
+
 interface HomeResponse {
-  pengaturan: { sapaan: string; headerImage: string };
+  pengaturan: {
+    sapaan: string;
+    headerImage: string;
+    wilayah?: WilayahInfo;
+  };
+  lokasiTerdeteksi?: LokasiTerdeteksi | null;
   kas: { saldoAkhir: number; masukBulanIni: number; keluarBulanIni: number };
   kegiatanTerdekat: { id: number; judul: string; tanggal: string; waktu: string; lokasi: string; status: string }[];
 }
 
 export default function WargaHome() {
   const [data, setData] = useState<HomeResponse | null>(null);
+  const [gpsStatus, setGpsStatus] = useState<'detecting' | 'granted' | 'denied'>('detecting');
 
-  useEffect(() => {
-    api.get<HomeResponse>('/public/home').then((res) => setData(res.data));
+  const fetchHome = useCallback((coords?: { lat: number; lng: number }) => {
+    api
+      .get<HomeResponse>('/public/home', {
+        params: coords ? { lat: coords.lat, lng: coords.lng } : undefined,
+      })
+      .then((res) => setData(res.data));
   }, []);
 
-  const headerImage = data?.pengaturan.headerImage || 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&q=80&w=800';
+  const deteksiKoordinat = useCallback(() => {
+    if (!('geolocation' in navigator)) {
+      setGpsStatus('denied');
+      fetchHome();
+      return;
+    }
+
+    setGpsStatus('detecting');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setGpsStatus('granted');
+        fetchHome({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        });
+      },
+      () => {
+        setGpsStatus('denied');
+        fetchHome();
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+    );
+  }, [fetchHome]);
+
+  useEffect(() => {
+    deteksiKoordinat();
+  }, [deteksiKoordinat]);
+
+  const headerImage =
+    data?.pengaturan.headerImage ||
+    'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&q=80&w=800';
   const sapaan = data?.pengaturan.sapaan || 'Selamat siang, Warga';
+
+  const wilayahUtama = data?.lokasiTerdeteksi ?? data?.pengaturan.wilayah;
+  const judulRtRw = [
+    wilayahUtama?.rt ? `RT ${wilayahUtama.rt}` : null,
+    wilayahUtama?.rw ? `RW ${wilayahUtama.rw}` : null,
+  ]
+    .filter(Boolean)
+    .join(' / ');
+
+  const subWilayah = [
+    wilayahUtama?.desa,
+    wilayahUtama?.kecamatan,
+    wilayahUtama?.kabupaten,
+    wilayahUtama?.provinsi,
+  ]
+    .filter(Boolean)
+    .join(', ');
 
   return (
     <div className="bg-bg-gray min-h-screen pb-24">
-      <div className="relative pt-12 pb-28 px-6 rounded-b-[2.5rem] shadow-sm z-10 overflow-hidden">
+      <div className="relative pt-10 pb-28 px-6 rounded-b-[2.5rem] shadow-sm z-10 overflow-hidden">
         <img src={headerImage} alt="Background Desa" className="absolute inset-0 w-full h-full object-cover z-0" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-primary/90 z-0" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/45 to-primary/90 z-0" />
 
         <div className="relative z-10 text-white">
+          {/* Banner Notifikasi Posisi Koordinat GPS Warga */}
+          <div className="mb-4 flex items-start justify-between gap-2 px-3.5 py-2.5 rounded-2xl bg-black/35 backdrop-blur-md border border-white/20 text-xs">
+            <div className="flex items-start gap-2 min-w-0">
+              <MapPin size={15} className="text-emerald-300 shrink-0 mt-0.5" />
+              <p className="text-white/95 leading-relaxed">
+                {gpsStatus === 'detecting' && 'Mendeteksi titik lokasi Anda...'}
+                {gpsStatus === 'granted' && data?.lokasiTerdeteksi?.pesan}
+                {gpsStatus === 'denied' &&
+                  `Wilayah aktif: ${[judulRtRw, subWilayah].filter(Boolean).join(', ')}`}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={deteksiKoordinat}
+              title="Perbarui titik lokasi GPS"
+              className="p-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white shrink-0 transition"
+            >
+              {gpsStatus === 'detecting' ? (
+                <Navigation size={13} className="animate-pulse text-emerald-300" />
+              ) : (
+                <LocateFixed size={13} />
+              )}
+            </button>
+          </div>
+
           <p className="text-sm text-white/80 mb-1">{sapaan}</p>
           <h2 className="text-lg font-bold mb-6 drop-shadow-md">
-            RT 01 / RW 08
+            {judulRtRw || wilayahUtama?.desa || 'Portal Wilayah'}
             <br />
-            <span className="text-sm font-normal text-white/90">Desa Sukadami, Cikarang Selatan</span>
+            <span className="text-xs sm:text-sm font-normal text-white/90 leading-snug block mt-0.5">
+              {subWilayah || 'Desa Sukadami, Cikarang Selatan'}
+            </span>
           </h2>
 
           <div className="bg-white/10 p-5 rounded-2xl backdrop-blur-md border border-white/30 shadow-lg">

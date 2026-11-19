@@ -19,7 +19,7 @@ export type Aksi = 'lihat' | 'edit' | 'hapus';
 export type Izin = Record<Aksi, boolean>;
 export type IzinMap = Record<MenuKey, Izin>;
 
-export const ROLES = ['Ketua RT', 'Sekretaris', 'Bendahara', 'Admin'] as const;
+export const ROLES = ['Ketua RT', 'Ketua RW', 'Sekretaris', 'Bendahara', 'Admin'] as const;
 export type Role = (typeof ROLES)[number];
 export type StatusPengguna = 'Aktif' | 'Nonaktif';
 
@@ -28,6 +28,13 @@ export interface Pengguna {
     nama: string;
     email: string;
     role: Role;
+    rt?: string | null;
+    rw?: string | null;
+    desa?: string | null;
+    kode_pos?: string | null;
+    kecamatan?: string | null;
+    kabupaten?: string | null;
+    provinsi?: string | null;
     status: StatusPengguna;
     izin: IzinMap;
 }
@@ -44,12 +51,15 @@ const buatIzin = (p: Partial<Record<MenuKey, Izin>>): IzinMap =>
 
 const SEMUA_PENUH = Object.fromEntries(MENU_LIST.map((m) => [m.key, PENUH])) as Record<MenuKey, Izin>;
 
+const PRESET_KETUA: Partial<Record<MenuKey, Izin>> = {
+    dashboard: BACA, warga: LIHAT_EDIT, organisasi: PENUH, kegiatan: PENUH,
+    kas: BACA, iuran: BACA, pengumuman: PENUH, laporan: BACA,
+    pengaturan: PENUH, pengguna: PENUH,
+};
+
 const PRESET: Record<Role, Partial<Record<MenuKey, Izin>>> = {
-    'Ketua RT': {
-        dashboard: BACA, warga: LIHAT_EDIT, organisasi: PENUH, kegiatan: PENUH,
-        kas: BACA, iuran: BACA, pengumuman: PENUH, laporan: BACA,
-        pengaturan: PENUH, pengguna: PENUH,
-    },
+    'Ketua RT': PRESET_KETUA,
+    'Ketua RW': PRESET_KETUA,
     Sekretaris: {
         dashboard: BACA, warga: PENUH, organisasi: PENUH, kegiatan: PENUH,
         pengumuman: PENUH, kas: BACA, laporan: BACA,
@@ -73,6 +83,7 @@ export function toggleIzin(izin: IzinMap, menu: MenuKey, aksi: Aksi): IzinMap {
 
 export const ROLE_PREFIX: Record<Role, string> = {
     'Ketua RT': '/ketua',
+    'Ketua RW': '/rw',
     Sekretaris: '/sekretaris',
     Bendahara: '/bendahara',
     Admin: '/admin',
@@ -91,8 +102,10 @@ const SEGMEN: Record<MenuKey, string> = {
     pengguna: 'pengguna',
 };
 
-export const menuPath = (role: Role, key: MenuKey): string =>
-    SEGMEN[key] ? `${ROLE_PREFIX[role]}/${SEGMEN[key]}` : ROLE_PREFIX[role];
+export const menuPath = (role: Role, key: MenuKey): string => {
+    const base = ROLE_PREFIX[role] ?? '/admin';
+    return SEGMEN[key] ? `${base}/${SEGMEN[key]}` : base;
+};
 
 const USER_KEY = 'sirt.currentUser';
 
@@ -161,7 +174,9 @@ export function useAkses() {
 
     const can = (menu: MenuKey, aksi: Aksi): boolean => {
         if (!currentUser || currentUser.status !== 'Aktif') return false;
-        if (currentUser.role === 'Ketua RT' && menu === 'pengguna') return true;
+        if ((currentUser.role === 'Ketua RT' || currentUser.role === 'Ketua RW') && menu === 'pengguna') {
+            return true;
+        }
         return currentUser.izin?.[menu]?.[aksi] ?? false;
     };
 

@@ -1,53 +1,82 @@
+import { useEffect, type ReactNode } from 'react';
 import { X } from 'lucide-react';
-import { useEffect } from 'react';
 
 interface ModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  title: string;
-  children: React.ReactNode;
+    isOpen: boolean;
+    onClose: () => void;
+    title: string;
+    subtitle?: string;
+    size?: 'md' | 'lg' | 'xl';
+    children: ReactNode;
 }
 
-export default function Modal({ isOpen, onClose, title, children }: ModalProps) {
-  // Mencegah scroll body saat modal terbuka
-  useEffect(() => {
-    if (isOpen) document.body.style.overflow = 'hidden';
-    else document.body.style.overflow = 'unset';
-    return () => { document.body.style.overflow = 'unset'; };
-  }, [isOpen]);
+const SIZE_CLASS: Record<NonNullable<ModalProps['size']>, string> = {
+    md: 'max-w-lg',
+    lg: 'max-w-2xl',
+    xl: 'max-w-4xl',
+};
 
-  // Menangani tombol ESC untuk menutup modal
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    if (isOpen) window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+export default function Modal({
+    isOpen,
+    onClose,
+    title,
+    subtitle,
+    size = 'lg',
+    children,
+}: ModalProps) {
+    useEffect(() => {
+        if (!isOpen) return;
+        const prev = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
 
-  if (!isOpen) return null;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', onKey);
 
-  return (
-    // Overlay dengan onClick untuk menutup
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
-      onClick={onClose} 
-    >
-      {/* e.stopPropagation() mencegah modal tertutup saat user klik di dalam form */}
-      <div 
-        className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200"
-        onClick={(e) => e.stopPropagation()} 
-      >
-        <div className="flex justify-between items-center p-6 border-b border-gray-100">
-          <h3 className="text-lg font-bold text-text-main">{title}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-red-500 transition-colors bg-gray-50 hover:bg-red-50 p-1.5 rounded-lg">
-            <X size={20} />
-          </button>
+        return () => {
+            document.body.style.overflow = prev;
+            window.removeEventListener('keydown', onKey);
+        };
+    }, [isOpen, onClose]);
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+            {/* Backdrop */}
+            <div
+                onClick={onClose}
+                className="fixed inset-0 bg-black/50 backdrop-blur-[2px] transition-opacity"
+            />
+
+            {/* Dialog Box Proporsional */}
+            <div
+                role="dialog"
+                aria-modal="true"
+                className={`relative w-full ${SIZE_CLASS[size]} bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-gray-100 max-h-[92dvh] flex flex-col overflow-hidden z-10`}
+            >
+                {/* Header Modal */}
+                <div className="px-6 py-4 border-b border-gray-100 flex items-start justify-between gap-4 shrink-0 bg-white">
+                    <div>
+                        <h3 className="text-lg font-bold text-text-main leading-snug">{title}</h3>
+                        {subtitle && <p className="text-xs text-text-muted mt-0.5">{subtitle}</p>}
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        aria-label="Tutup dialog"
+                        className="p-2 -mr-2 rounded-xl text-gray-400 hover:text-text-main hover:bg-gray-100 transition-colors shrink-0"
+                    >
+                        <X size={20} />
+                    </button>
+                </div>
+
+                {/* Body Scrollable */}
+                <div className="px-6 py-5 overflow-y-auto overscroll-contain flex-1">
+                    {children}
+                </div>
+            </div>
         </div>
-        <div className="p-6 max-h-[70vh] overflow-y-auto">
-          {children}
-        </div>
-      </div>
-    </div>
-  );
+    );
 }

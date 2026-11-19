@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bgJ" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#103f31"/>
+      <stop offset="100%" stop-color="#04160f"/>
+    </linearGradient>
+    <linearGradient id="goldJ" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fffbe6"/>
+      <stop offset="45%" stop-color="#f0d27a"/>
+      <stop offset="75%" stop-color="#d4a017"/>
+      <stop offset="100%" stop-color="#8a6d14"/>
+    </linearGradient>
+    <linearGradient id="shineJ" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="64" height="64" rx="15" fill="url(#bgJ)"/>
+  <rect width="64" height="28" rx="15" fill="url(#shineJ)"/>
+
+  <rect x="4.5" y="4.5" width="55" height="55" rx="11"
+        fill="none" stroke="url(#goldJ)" stroke-width="0.9" opacity="0.9"/>
+
+  <!-- Rumah emas -->
+  <path d="M32 15.5 L52.5 33 H46.5 V50.5 H17.5 V33 H11.5 Z"
+        fill="url(#goldJ)"/>
+
+  <!-- Aksen kilau atap -->
+  <path d="M32 17 L48 30.5 H16 Z"
+        fill="#ffffff" opacity="0.12"/>
+
+  <!-- Pintu melengkung -->
+  <path d="M27.5 50.5 V41 a4.5 4.5 0 0 1 9 0 V50.5 Z" fill="#04160f"/>
+
+  <!-- Jendela -->
+  <rect x="21.5" y="35.5" width="4.5" height="4.5" rx="0.7" fill="#04160f"/>
+  <rect x="38" y="35.5" width="4.5" height="4.5" rx="0.7" fill="#04160f"/>
+</svg>
