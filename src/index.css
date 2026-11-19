@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #157043;
+  --color-primary-dark: #0e5230;
+  --color-primary-light: #e8f5ee;
+  --color-bg-gray: #f4f6f8;
+  --color-text-main: #1e293b;
+  --color-text-muted: #64748b;
+}
+
+/* Utility untuk menyembunyikan scrollbar di tab filter */
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
