@@ -30,16 +30,58 @@ interface HomeResponse {
   kegiatanTerdekat: { id: number; judul: string; tanggal: string; waktu: string; lokasi: string; status: string }[];
 }
 
+async function fallbackReverseGeocode(lat: number, lng: number): Promise<LokasiTerdeteksi | null> {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1`,
+      { headers: { 'Accept-Language': 'id' } }
+    );
+    if (!res.ok) return null;
+    const json = await res.json();
+    const addr = json?.address ?? {};
+
+    const desa = addr.village || addr.suburb || addr.hamlet || addr.neighbourhood || null;
+    const kecamatan = addr.city_district || addr.district || addr.subdistrict || null;
+    const kabupaten = addr.city || addr.regency || addr.county || null;
+    const provinsi = addr.state || null;
+
+    const bagian = [desa, kecamatan ? `Kec. ${kecamatan}` : null, kabupaten, provinsi].filter(Boolean);
+    if (bagian.length === 0) return null;
+
+    return {
+      dalamWilayahTerdaftar: false,
+      jarakMeter: null,
+      rt: null,
+      rw: null,
+      desa,
+      kecamatan,
+      kabupaten,
+      provinsi,
+      pesan: `Anda berada di wilayah ${bagian.join(', ')}`,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export default function WargaHome() {
   const [data, setData] = useState<HomeResponse | null>(null);
+  const [fallbackLokasi, setFallbackLokasi] = useState<LokasiTerdeteksi | null>(null);
   const [gpsStatus, setGpsStatus] = useState<'detecting' | 'granted' | 'denied'>('detecting');
 
-  const fetchHome = useCallback((coords?: { lat: number; lng: number }) => {
-    api
-      .get<HomeResponse>('/public/home', {
-        params: coords ? { lat: coords.lat, lng: coords.lng } : undefined,
-      })
-      .then((res) => setData(res.data));
+  const fetchHome = useCallback(async (coords?: { lat: number; lng: number }) => {
+    const res = await api.get<HomeResponse>('/public/home', {
+      params: coords ? { lat: coords.lat, lng: coords.lng } : undefined,
+    });
+    setData(res.data);
+
+    // Jika backend belum mengembalikan lokasiTerdeteksi, lakukan reverse geocode langsung dari browser
+    if (coords && !res.data.lokasiTerdeteksi) {
+      const lokal = await fallbackReverseGeocode(coords.lat, coords.lng);
+      if (lokal) setFallbackLokasi(lokal);
+    } else if (res.data.lokasiTerdeteksi) {
+      setFallbackLokasi(null);
+    }
   }, []);
 
   const deteksiKoordinat = useCallback(() => {
@@ -75,7 +117,9 @@ export default function WargaHome() {
     'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&q=80&w=800';
   const sapaan = data?.pengaturan.sapaan || 'Selamat siang, Warga';
 
-  const wilayahUtama = data?.lokasiTerdeteksi ?? data?.pengaturan.wilayah;
+  const lokasiAktif = data?.lokasiTerdeteksi ?? fallbackLokasi;
+  const wilayahUtama = lokasiAktif ?? data?.pengaturan.wilayah;
+
   const judulRtRw = [
     wilayahUtama?.rt ? `RT ${wilayahUtama.rt}` : null,
     wilayahUtama?.rw ? `RW ${wilayahUtama.rw}` : null,
@@ -106,8 +150,7 @@ export default function WargaHome() {
               <p className="text-white/95 leading-relaxed">
                 {gpsStatus === 'detecting' && 'Mendeteksi titik lokasi Anda...'}
                 {gpsStatus === 'granted' &&
-                  (data?.lokasiTerdeteksi?.pesan ||
-                    'Lokasi GPS aktif, memuat detail wilayah...')}
+                  (lokasiAktif?.pesan || 'Lokasi GPS aktif, memuat detail wilayah...')}
                 {gpsStatus === 'denied' &&
                   `Izin lokasi nonaktif • Wilayah: ${[judulRtRw, subWilayah].filter(Boolean).join(', ')}`}
               </p>
