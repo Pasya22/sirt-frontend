@@ -9,6 +9,6 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5432,
-    proxy: { '/api': 'http://0.0.0.0:8000', '/storage': 'http://0.0.0.0:8000' }
+    proxy: { '/api': 'https://sirt-backend-production.up.railway.app', '/storage': 'https://sirt-backend-production.up.railway.app' }
   },
 })
