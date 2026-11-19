@@ -62,7 +62,7 @@ export default function WargaHome() {
         setGpsStatus('denied');
         fetchHome();
       },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+      { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 }
     );
   }, [fetchHome]);
 
@@ -105,9 +105,11 @@ export default function WargaHome() {
               <MapPin size={15} className="text-emerald-300 shrink-0 mt-0.5" />
               <p className="text-white/95 leading-relaxed">
                 {gpsStatus === 'detecting' && 'Mendeteksi titik lokasi Anda...'}
-                {gpsStatus === 'granted' && data?.lokasiTerdeteksi?.pesan}
+                {gpsStatus === 'granted' &&
+                  (data?.lokasiTerdeteksi?.pesan ||
+                    'Lokasi GPS aktif, memuat detail wilayah...')}
                 {gpsStatus === 'denied' &&
-                  `Wilayah aktif: ${[judulRtRw, subWilayah].filter(Boolean).join(', ')}`}
+                  `Izin lokasi nonaktif • Wilayah: ${[judulRtRw, subWilayah].filter(Boolean).join(', ')}`}
               </p>
             </div>
             <button
