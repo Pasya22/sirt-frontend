@@ -2,58 +2,29 @@
 <html lang="id">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SIRUTAWA — Aplikasi Warga</title>
 
   <!-- Favicon & PWA -->
-  <link rel="icon" type="image/svg+xml" href="/SIRUTAWA.svg">
-  <link rel="apple-touch-icon" href="/icons/icon-192.png">
-  <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#04160f">
+  <link rel="icon" type="image/svg+xml" href="/SIRUTAWA.svg" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#04160f" />
 </head>
 
 <body>
-
   <div id="root"></div>
-  <!-- Tombol install -->
-  <button id="installBtn" hidden>
-    📲 Install Aplikasi SIRUTAWA
-  </button>
   <script type="module" src="/src/main.tsx"></script>
 
-  <!-- Script install PWA -->
-  <script>
-    let deferredPrompt;
-
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      document.getElementById('installBtn').hidden = false;
-    });
-
-    document.getElementById('installBtn').addEventListener('click', async () => {
-      if (!deferredPrompt) return;
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      console.log(`User memilih: ${outcome}`);
-      deferredPrompt = null;
-      document.getElementById('installBtn').hidden = true;
-    });
-
-    window.addEventListener('appinstalled', () => {
-      deferredPrompt = null;
-      document.getElementById('installBtn').hidden = true;
-    });
-  </script>
-
-  <!-- Daftarkan Service Worker (untuk syarat install di Chrome) -->
+  <!-- Daftarkan Service Worker -->
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js');
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      });
     }
   </script>
-
 </body>
 
 </html>
